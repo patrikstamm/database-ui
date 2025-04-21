@@ -1,0 +1,21 @@
+[
+    {
+      "id": 1,
+      "title": "Inception",
+      "description": "A mind-bending thriller",
+      "poster": "/images/inception.jpg"
+    },
+    {
+      "id": 2,
+      "title": "The Matrix",
+      "description": "Reality is not what it seems",
+      "poster": "/images/matrix.jpg"
+    },
+    {
+      "id": 3,
+      "title": "Interstellar",
+      "description": "Journey beyond the stars",
+      "poster": "/images/interstellar.jpg"
+    }
+  ]
+  
