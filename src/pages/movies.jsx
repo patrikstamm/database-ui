@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import moviesData from "../exampleData/movieData.json";
 import { Card, CardContent } from "../components/card";
@@ -6,6 +7,7 @@ import { Button } from "../components/button";
 
 export default function Movies() {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate(); // <-- Hook for navigation
 
   const filteredMovies = moviesData.filter((movie) =>
     movie.title.toLowerCase().includes(search.toLowerCase())
@@ -32,10 +34,13 @@ export default function Movies() {
             />
             <CardContent>
               <h2 className="text-xl font-semibold mt-2">{movie.title}</h2>
-              <p className="text-sm text-gray-400 mt-1">
-                {movie.description}
-              </p>
-              <Button className="mt-4 w-full">Watch Now</Button>
+              <p className="text-sm text-gray-400 mt-1">{movie.description}</p>
+              <Button
+                className="mt-4 w-full"
+                onClick={() => navigate(`/movie/${movie.id}`)}
+              >
+                Watch Now
+              </Button>
             </CardContent>
           </Card>
         ))}
