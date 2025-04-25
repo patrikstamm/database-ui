@@ -7,11 +7,25 @@ import { Button } from "../components/button";
 
 export default function Movies() {
   const [search, setSearch] = useState("");
-  const navigate = useNavigate(); // <-- Hook for navigation
+  const navigate = useNavigate();
 
   const filteredMovies = moviesData.filter((movie) =>
     movie.title.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Optional: Simple list state for demo purposes
+  //const [myList, setMyList] = useState([]);
+
+  const handleAddToList = (movieId) => {
+    const existingList = JSON.parse(localStorage.getItem("myList")) || [];
+    if (!existingList.includes(movieId)) {
+      const updatedList = [...existingList, movieId];
+      localStorage.setItem("myList", JSON.stringify(updatedList));
+      alert("Movie added to your list!");
+    } else {
+      alert("This movie is already in your list.");
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto mt-6 p-4">
@@ -40,6 +54,12 @@ export default function Movies() {
                 onClick={() => navigate(`/movie/${movie.id}`)}
               >
                 Watch Now
+              </Button>
+              <Button
+                className="mt-2 w-full bg-green-600 hover:bg-green-700"
+                onClick={() => handleAddToList(movie.id)}
+              >
+                Add to My List
               </Button>
             </CardContent>
           </Card>

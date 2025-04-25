@@ -1,4 +1,4 @@
-
+// components/navbar.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -13,6 +13,9 @@ const Navbar = () => {
           </li>
           <li>
             <Link to="/movies" className="hover:text-yellow-400 transition">Movies</Link>
+          </li>
+          <li>
+            <Link to="/my-list" className="hover:text-yellow-400 transition">My List</Link>
           </li>
           <li>
             <Link to="/plan" className="hover:text-yellow-400 transition">Plan</Link>

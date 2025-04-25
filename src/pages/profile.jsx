@@ -8,8 +8,8 @@ import Auth from "../components/auth";
 export default function Profile() {
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true for demo
   const [userInfo, setUserInfo] = useState({
-    name: "J",
-    email: "dchach@gmail.com",
+    name: " ",
+    email: " ",
   });
   const [editMode, setEditMode] = useState(false);
   const [errors, setErrors] = useState({});
