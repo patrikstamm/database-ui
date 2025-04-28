@@ -13,3 +13,6 @@ If you are developing a production application, we recommend using TypeScript wi
 # database-ui
 I use React+vite+tailwindcss(4)
 If you want to run this. cd moviestreaming, npm install, and npm run dev
+
+# added axios
+please use do npm install axios
