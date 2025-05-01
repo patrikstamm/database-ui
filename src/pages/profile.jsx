@@ -43,8 +43,8 @@ const defaultAvatar = "/api/placeholder/200/200";
 export default function Profile() {
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true for demo
   const [userInfo, setUserInfo] = useState({
-    name: "J",
-    email: "dchach@gmail.com",
+    name: " ",
+    email: " ",
     subscription: "Basic", // Default subscription
     profilePicture: defaultAvatar, // Default profile picture
   });
