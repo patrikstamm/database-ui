@@ -4,48 +4,16 @@ import { Card, CardContent } from "../components/card";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
 import Auth from "../components/auth";
+import { tiers } from "../components/tierData.js"; //make the code read easier by importing tiers from other
 
-// These would typically be fetched from your backend or state management
-const tiers = [
-  {
-    name: "Free",
-    id: "tier-free",
-    priceMonthly: "Free",
-    description: "A standard access of our platform.",
-    features: ["Can watch on 720p.", "10 free movie access per month"],
-    featured: false,
-  },
-  {
-    name: "Basic",
-    id: "tier-basic",
-    priceMonthly: "$49",
-    description: "Access to more content in HD.",
-    features: [
-      "Can watch on 1080p.",
-      "30 free movie access per month",
-      "No Ads",
-    ],
-    featured: false,
-  },
-  {
-    name: "Premium",
-    id: "tier-premium",
-    priceMonthly: "$99",
-    description: "Access for every content on our platform.",
-    features: ["Can watch on 4k", "Unlimited access to any movies", "No Ads"],
-    featured: true,
-  },
-];
-
-// Default avatar image - in a real app you might use a placeholder service
-const defaultAvatar = "/api/placeholder/200/200";
+const defaultAvatar = "/api/placeholder/200/200"; //have to fetch from the backend
 
 export default function Profile() {
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true for demo
   const [userInfo, setUserInfo] = useState({
-    name: " ",
-    email: " ",
-    subscription: "Basic", // Default subscription
+    name: "Your Name", // Default value instead of empty space
+    email: "your.email@example.com", // Default value instead of empty space
+    subscription: "Free", // Default subscription
     profilePicture: defaultAvatar, // Default profile picture
   });
   const [editMode, setEditMode] = useState(false);
@@ -53,6 +21,15 @@ export default function Profile() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState(null);
   const [fileInputKey, setFileInputKey] = useState(Date.now()); // For resetting file input
+
+  // Add password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
 
   // Find the current subscription details
   const currentPlan =
@@ -180,6 +157,59 @@ export default function Profile() {
     }
   };
 
+  // Password change handlers
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData({ ...passwordData, [name]: value });
+
+    // Clear error for this field if it exists and now has a value
+    if (passwordErrors[name] && value.trim()) {
+      setPasswordErrors({ ...passwordErrors, [name]: "" });
+    }
+  };
+
+  const validatePasswordForm = () => {
+    const newErrors = {};
+
+    // Validate current password
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = "Current password is required";
+    }
+
+    // Validate new password
+    if (!passwordData.newPassword) {
+      newErrors.newPassword = "New password is required";
+    } else if (passwordData.newPassword.length < 8) {
+      newErrors.newPassword = "Password must be at least 8 characters";
+    }
+
+    // Validate confirm password
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setPasswordErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSavePassword = () => {
+    if (validatePasswordForm()) {
+      // In a real app, you'd send this to your backend
+      console.log("Changing password:", passwordData);
+
+      // Reset form and close modal
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setShowPasswordModal(false);
+
+      // Show success message (in a real app, you might use a toast notification)
+      alert("Password changed successfully!");
+    }
+  };
+
   return (
     <div className="flex justify-center items-center mt-12">
       {isAuthenticated ? (
@@ -291,6 +321,18 @@ export default function Profile() {
                 )}
               </div>
 
+              {/* Password Change Button (only show when not in edit mode) */}
+              {!editMode && (
+                <div>
+                  <Button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Change Password
+                  </Button>
+                </div>
+              )}
+
               {/* Subscription Plan Section */}
               <div className="mt-8 pt-6 border-t border-gray-700">
                 <h2 className="text-xl font-semibold text-white mb-4">
@@ -399,6 +441,117 @@ export default function Profile() {
                 disabled={!selectedTier}
               >
                 Confirm Change
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4">
+          <div className="bg-gray-900 p-6 rounded-xl shadow-xl w-full max-w-md text-white">
+            <h2 className="text-2xl font-bold mb-4">Change Password</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Current Password <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  className={`w-full bg-gray-800 border ${
+                    passwordErrors.currentPassword
+                      ? "border-red-500"
+                      : "border-gray-700"
+                  } text-white py-3 px-4 rounded-lg focus:ring-2 ${
+                    passwordErrors.currentPassword
+                      ? "focus:ring-red-500"
+                      : "focus:ring-indigo-500"
+                  }`}
+                />
+                {passwordErrors.currentPassword && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordErrors.currentPassword}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  New Password <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  className={`w-full bg-gray-800 border ${
+                    passwordErrors.newPassword
+                      ? "border-red-500"
+                      : "border-gray-700"
+                  } text-white py-3 px-4 rounded-lg focus:ring-2 ${
+                    passwordErrors.newPassword
+                      ? "focus:ring-red-500"
+                      : "focus:ring-indigo-500"
+                  }`}
+                />
+                {passwordErrors.newPassword && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordErrors.newPassword}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Confirm New Password <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  name="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  className={`w-full bg-gray-800 border ${
+                    passwordErrors.confirmPassword
+                      ? "border-red-500"
+                      : "border-gray-700"
+                  } text-white py-3 px-4 rounded-lg focus:ring-2 ${
+                    passwordErrors.confirmPassword
+                      ? "focus:ring-red-500"
+                      : "focus:ring-indigo-500"
+                  }`}
+                />
+                {passwordErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordErrors.confirmPassword}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4 mt-6">
+              <Button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordData({
+                    currentPassword: "",
+                    newPassword: "",
+                    confirmPassword: "",
+                  });
+                  setPasswordErrors({});
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSavePassword}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+              >
+                Save New Password
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import moviesData from "../exampleData/movieData.json";
+import api from "../components/services/api";
 import { Card, CardContent } from "../components/card";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
@@ -8,8 +8,27 @@ import { Button } from "../components/button";
 export default function Movies() {
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("All");
+  const [moviesData, setMoviesData] = useState([]);
   const [recentlyWatched, setRecentlyWatched] = useState([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api
+      .get("/contents")
+      .then((response) => {
+        const normalizedData = response.data.map((movie) => ({
+          id: movie.ContentID,
+          title: movie.Title,
+          description: movie.Description,
+          poster: movie.PosterURL, // Confirm this exists in your backend
+          genres: movie.Categories || [], // default to empty array if null
+        }));
+        setMoviesData(normalizedData);
+      })
+      .catch((error) => {
+        console.error("Error fetching movies:", error);
+      });
+  }, []);
 
   const allGenres = [
     "All",
@@ -17,9 +36,8 @@ export default function Movies() {
   ];
 
   const filteredMovies = moviesData.filter((movie) => {
-    const matchesSearch = movie.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const matchesSearch =
+      movie.title?.toLowerCase().includes(search.toLowerCase()) ?? false;
     const matchesGenre =
       selectedGenre === "All" ||
       (movie.genres && movie.genres.includes(selectedGenre));
@@ -35,7 +53,7 @@ export default function Movies() {
       .filter((movie) => movie !== undefined)
       .slice(0, 4);
     setRecentlyWatched(recentMovies);
-  }, []);
+  }, [moviesData]);
 
   const handleAddToList = (movieId) => {
     const existingList = JSON.parse(localStorage.getItem("myList")) || [];
@@ -49,6 +67,18 @@ export default function Movies() {
   };
 
   const handleWatchMovie = (movieId) => {
+    // Check if user is authenticated
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+      // Redirect to login if no auth token
+      navigate("/login", {
+        state: { redirectAfterLogin: `/movie/${movieId}` },
+      });
+      return;
+    }
+
+    // Continue with watching movie logic if authenticated
     const recentMoviesIds = JSON.parse(
       localStorage.getItem("recentlyWatched") || "[]"
     );
@@ -57,7 +87,6 @@ export default function Movies() {
     localStorage.setItem("recentlyWatched", JSON.stringify(updatedIds));
     navigate(`/movie/${movieId}`);
   };
-
   return (
     <div className="max-w-6xl mx-auto mt-6 p-4">
       {/* Search and Genre Filter */}

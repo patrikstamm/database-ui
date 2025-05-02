@@ -30,7 +30,7 @@ export default function Auth({ onAuthenticated }) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    
+
     try {
       const response = await axios.post(
         "http://localhost:8080/login",
@@ -38,19 +38,23 @@ export default function Auth({ onAuthenticated }) {
       );
 
       console.log("Login success:", response.data);
-      
+
       // Store token in localStorage
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
-        
+
         // Set authorization header for future requests
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${response.data.token}`;
       }
 
       onAuthenticated(response.data.user); // Pass user data to parent component
     } catch (error) {
       console.error("Login error:", error);
-      setError(error.response?.data?.message || "Login failed. Please try again.");
+      setError(
+        error.response?.data?.message || "Login failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -78,19 +82,24 @@ export default function Auth({ onAuthenticated }) {
       });
 
       console.log("Registration success:", response.data);
-      
+
       // Store token in localStorage
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
-        
+
         // Set authorization header for future requests
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${response.data.token}`;
       }
 
       onAuthenticated(response.data.user); // Pass user data to parent component
     } catch (error) {
       console.error("Registration error:", error);
-      setError(error.response?.data?.message || "Registration failed. Please try again.");
+      setError(
+        error.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
