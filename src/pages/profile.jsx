@@ -1,27 +1,67 @@
-// pages/Profile.jsx
+// pages/Profile.jsx - Fixed with better auth handling
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "../components/card";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
 import Auth from "../components/auth";
-import { tiers } from "../components/tierData.js"; //make the code read easier by importing tiers from other
+import { tiers } from "../components/tierData.js";
+import { useAuth } from "../components/context/authContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
-const defaultAvatar = "/api/placeholder/200/200"; //have to fetch from the backend
+// Use a reliable placeholder image service
+const defaultAvatar = "https://placehold.co/200x200?text=User";
 
 export default function Profile() {
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to true for demo
+  const { isAuthenticated, user, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [userInfo, setUserInfo] = useState({
-    name: "Your Name", // Default value instead of empty space
-    email: "your.email@example.com", // Default value instead of empty space
-    subscription: "Free", // Default subscription
-    profilePicture: defaultAvatar, // Default profile picture
+    id: "",
+    name: "Your Name",
+    email: "your.email@example.com",
+    subscription: "Free",
+    profilePicture: defaultAvatar,
   });
   const [editMode, setEditMode] = useState(false);
   const [errors, setErrors] = useState({});
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState(null);
-  const [fileInputKey, setFileInputKey] = useState(Date.now()); // For resetting file input
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
+  const [loading, setLoading] = useState(true);
+  const [redirectProcessed, setRedirectProcessed] = useState(false);
 
+  const handleAuthenticated = (userData) => {
+    // Ensure user ID is numeric if possible
+    if (userData && userData.id && typeof userData.id === 'string' && !isNaN(parseInt(userData.id))) {
+      userData.id = parseInt(userData.id, 10);
+    }
+    
+    // Use the login function from auth context
+    login(userData);
+
+    // Update local state
+    setUserInfo({
+      id: userData?.id || "user1",
+      name: userData?.name || "Your Name",
+      email: userData?.email || "your.email@example.com",
+      subscription: userData?.subscription || "Free",
+      profilePicture: userData?.profilePicture || defaultAvatar,
+    });
+
+    setLoading(false);
+
+    // Check for redirect in localStorage
+    const savedRedirect = localStorage.getItem("redirectAfterLogin");
+
+    if (savedRedirect) {
+      // Clear the redirect info
+      localStorage.removeItem("redirectAfterLogin");
+
+      // Navigate to the redirect destination
+      navigate(`/${savedRedirect}`);
+    }
+  };
+  
   // Add password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -35,33 +75,38 @@ export default function Profile() {
   const currentPlan =
     tiers.find((tier) => tier.name === userInfo.subscription) || tiers[0];
 
+  // Replace your current redirect effect with this version
   useEffect(() => {
-    // Check localStorage for saved subscription and profile data on component mount
-    const savedPlan = localStorage.getItem("selectedPlan");
-    const savedProfileData = localStorage.getItem("profileData");
+    // Only process redirect once to avoid infinite loop
+    if (isAuthenticated && user && !redirectProcessed) {
+      const urlParams = new URLSearchParams(location.search);
+      const redirectTo = urlParams.get("redirect");
 
-    if (savedPlan) {
-      setUserInfo((prev) => ({ ...prev, subscription: savedPlan }));
-    }
-
-    if (savedProfileData) {
-      try {
-        const profileData = JSON.parse(savedProfileData);
-        setUserInfo((prev) => ({ ...prev, ...profileData }));
-      } catch (e) {
-        console.error("Error parsing profile data from localStorage", e);
+      if (redirectTo) {
+        // Mark redirect as processed before navigating
+        setRedirectProcessed(true);
+        navigate(`/${redirectTo}`);
+        return;
       }
-    }
-  }, []);
 
-  const handleAuthenticated = (userData) => {
-    setIsAuthenticated(true);
-    setUserInfo({
-      ...userData,
-      subscription: userData.subscription || "Free",
-      profilePicture: userData.profilePicture || defaultAvatar,
-    });
-  };
+      // Mark as processed even if there's no redirect
+      setRedirectProcessed(true);
+
+      // Set user info from context when authenticated
+      setUserInfo({
+        id: user.id || "",
+        name: user.name || "Your Name",
+        email: user.email || "your.email@example.com",
+        subscription: user.subscription || "Free",
+        profilePicture: user.profilePicture || defaultAvatar,
+      });
+
+      setLoading(false);
+    } else if (!isAuthenticated) {
+      // If not authenticated, stop loading
+      setLoading(false);
+    }
+  }, [isAuthenticated, user, location.search, navigate, redirectProcessed]);
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -76,12 +121,9 @@ export default function Profile() {
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // In a real app, you would upload this to your server or cloud storage
-      // For this demo, we'll use a FileReader to get a data URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setUserInfo({ ...userInfo, profilePicture: reader.result });
-        // Reset the file input so the same file can be selected again if needed
         setFileInputKey(Date.now());
       };
       reader.readAsDataURL(file);
@@ -107,37 +149,43 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (validateForm()) {
-      // In a real app you'd update the backend here
-      console.log("Saving profile:", userInfo);
+      try {
+        setLoading(true);
 
-      // Save profile data to localStorage (for demo purposes)
-      localStorage.setItem(
-        "profileData",
-        JSON.stringify({
-          name: userInfo.name,
-          email: userInfo.email,
-          profilePicture: userInfo.profilePicture,
-        })
-      );
+        // Ensure user ID is numeric if possible
+        if (userInfo.id && typeof userInfo.id === 'string' && !isNaN(parseInt(userInfo.id))) {
+          userInfo.id = parseInt(userInfo.id, 10);
+        }
 
-      setEditMode(false);
+        // Simplify for now - just update local state
+        localStorage.setItem("profileData", JSON.stringify(userInfo));
+        login(userInfo);
+
+        // Exit edit mode
+        setEditMode(false);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error updating profile", error);
+        alert("Failed to update profile. Please try again.");
+        setLoading(false);
+      }
     }
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    // Use the logout function from auth context
+    logout();
+
+    // Reset local state
     setUserInfo({
-      name: "",
-      email: "",
-      subscription: "",
+      name: "Your Name",
+      email: "your.email@example.com",
+      subscription: "Free",
       profilePicture: defaultAvatar,
     });
     setErrors({});
-    // Clear localStorage
-    localStorage.removeItem("profileData");
-    localStorage.removeItem("selectedPlan");
   };
 
   const handleChangePlan = () => {
@@ -150,8 +198,16 @@ export default function Profile() {
 
   const confirmPlanChange = () => {
     if (selectedTier) {
-      setUserInfo({ ...userInfo, subscription: selectedTier.name });
+      // Update subscription in state
+      const updatedUserInfo = { ...userInfo, subscription: selectedTier.name };
+      setUserInfo(updatedUserInfo);
+
+      // Update localStorage and auth context
+      localStorage.setItem("profileData", JSON.stringify(updatedUserInfo));
       localStorage.setItem("selectedPlan", selectedTier.name);
+      login(updatedUserInfo); // Update auth context
+
+      // Close modal and reset selection
       setSelectedTier(null);
       setShowPlanModal(false);
     }
@@ -194,21 +250,24 @@ export default function Profile() {
 
   const handleSavePassword = () => {
     if (validatePasswordForm()) {
-      // In a real app, you'd send this to your backend
-      console.log("Changing password:", passwordData);
-
-      // Reset form and close modal
+      alert("Password changed successfully!");
       setPasswordData({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
+      setPasswordErrors({});
       setShowPasswordModal(false);
-
-      // Show success message (in a real app, you might use a toast notification)
-      alert("Password changed successfully!");
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center mt-12">
@@ -234,6 +293,11 @@ export default function Profile() {
                   src={userInfo.profilePicture || defaultAvatar}
                   alt="Profile"
                   className="w-24 h-24 rounded-full object-cover border-2 border-indigo-500"
+                  onError={(e) => {
+                    // If image fails to load, fallback to default
+                    e.target.onerror = null;
+                    e.target.src = defaultAvatar;
+                  }}
                 />
                 {editMode && (
                   <div className="absolute bottom-0 right-0">
@@ -378,8 +442,9 @@ export default function Profile() {
                 <Button
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition-colors mt-4"
                   onClick={handleSave}
+                  disabled={loading}
                 >
-                  Save Changes
+                  {loading ? "Saving..." : "Save Changes"}
                 </Button>
               ) : (
                 <Button
@@ -550,8 +615,9 @@ export default function Profile() {
               <Button
                 onClick={handleSavePassword}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+                disabled={loading}
               >
-                Save New Password
+                {loading ? "Saving..." : "Save New Password"}
               </Button>
             </div>
           </div>
