@@ -1,6 +1,27 @@
 import React, { useState } from "react";
 import { Button } from "../components/button";
 import { tiers } from "../components/tierData.js";
+import axios from "axios"
+
+
+
+const getSubscriptionUpdate = async (subscription_plan) => {
+  try {
+    const response = await axios.get('http://localhost:8080/update_subscription', {
+      withCredentials: true,
+      params: {
+        subscription_plan: subscription_plan,
+      },
+    });
+
+    console.log('Subscription data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subscription update:', error);
+    throw error;
+  }
+};
+
 
 export default function Plan() {
   const [selectedTier, setSelectedTier] = useState(null);
@@ -120,9 +141,8 @@ export default function Plan() {
         {tiers.map((tier) => (
           <div
             key={tier.id}
-            className={`w-64 h-[300px] bg-gray-800 text-white border ${
-              tier.featured ? "border-yellow-500" : "border-white"
-            } p-4 rounded-xl shadow-md hover:scale-105 transform transition-transform cursor-pointer`}
+            className={`w-64 h-[300px] bg-gray-800 text-white border ${tier.featured ? "border-yellow-500" : "border-white"
+              } p-4 rounded-xl shadow-md hover:scale-105 transform transition-transform cursor-pointer`}
             onClick={() => setSelectedTier(tier)}
           >
             <h2 className="text-xl font-bold mb-2">{tier.name}</h2>
@@ -161,7 +181,9 @@ export default function Plan() {
                   onClick={() => {
                     if (selectedTier.name === "Free") {
                       alert("Subscribed to Free plan");
-                      setSelectedTier(null);
+                      const response = getSubscriptionUpdate(selectedTier.name)
+                      console.log(response)
+
                     } else {
                       setShowPaymentForm(true);
                     }
@@ -203,11 +225,10 @@ export default function Plan() {
                       }));
                     }
                   }}
-                  className={`w-full p-2 border ${
-                    validationErrors.cardName
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full p-2 border ${validationErrors.cardName
+                    ? "border-red-500"
+                    : "border-gray-300"
+                    } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   placeholder="John Doe"
                 />
                 {validationErrors.cardName && (
@@ -292,7 +313,12 @@ export default function Plan() {
                 </Button>
                 <Button
                   className="text-sm px-3 py-1"
-                  onClick={handleSubmitPayment}
+                  onClick={() => {
+                    handleSubmitPayment()
+                    const response = getSubscriptionUpdate(selectedTier.name)
+                    console.log(response)
+                  }
+                  }
                   disabled={
                     !paymentDetails.cardName ||
                     paymentDetails.cardNumber.length < 16 ||
