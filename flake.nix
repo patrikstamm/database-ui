@@ -10,7 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        nodejs = pkgs.nodejs_20; # or another recent version
+        nodejs = pkgs.nodejs_20;
       in
       {
         devShells.default = pkgs.mkShell {
@@ -18,6 +18,8 @@
           buildInputs = [
             nodejs
             pkgs.eslint
+            pkgs.nodePackages.typescript
+            pkgs.nodePackages.typescript-language-server
           ];
 
           shellHook = ''
