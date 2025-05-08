@@ -117,6 +117,36 @@ export default function Profile() {
       setErrors({ ...errors, [name]: "" });
     }
   };
+  const handleUploadProfilePicture = async () => {
+    try {
+      const fileInput = document.getElementById("profile-picture");
+      if (fileInput && fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append("profile_pic", fileInput.files[0]); // 📎 ชื่อต้องตรงกับฝั่ง Go
+
+        const response = await fetch("http://localhost:8080/users/profile_picture", {
+          method: "PUT",
+          body: formData,
+          credentials: "include", // 🔐 ส่ง cookie JWT ไปด้วย
+        });
+
+        if (!response.ok) throw new Error("Upload failed");
+
+        const result = await response.json();
+        console.log("✅ Upload success:", result);
+
+        // 📥 ดึงรูปใหม่จาก backend เพื่ออัปเดตหน้า
+        const res = await apiService.auth.getCurrentUser(userInfo.id);
+        setUserInfo((prev) => ({
+          ...prev,
+          profilePicture: res.data.user.profilePicture || defaultAvatar,
+        }));
+      }
+    } catch (err) {
+      console.error("❌ Upload error:", err);
+      alert("Failed to upload profile picture");
+    }
+  };
 
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
@@ -148,16 +178,32 @@ export default function Profile() {
     if (validateForm()) {
       try {
         setLoading(true);
-        if (userInfo.id && typeof userInfo.id === 'string' && !isNaN(parseInt(userInfo.id))) {
-          userInfo.id = parseInt(userInfo.id, 10);
+
+        const formData = new FormData();
+        formData.append("username", userInfo.name);
+        formData.append("email", userInfo.email);
+        formData.append("subscription", userInfo.subscription);
+
+        const response = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
+          method: "PUT",
+          body: formData,
+          credentials: "include", // สำคัญมาก: ส่ง cookie (JWT) ไปด้วย
+        });
+
+        if (!response.ok) {
+          const err = await response.json(); // ✅ ตรงนี้ใช้ได้เพราะประกาศแล้ว
+          throw new Error(err.error || "Update failed");
         }
-        localStorage.setItem("profileData", JSON.stringify(userInfo));
-        login(userInfo);
+
+        // ถ้าอัปเดตสำเร็จ
+        const data = await response.json();
+        console.log("✅ Profile updated:", data);
+
         setEditMode(false);
-        setLoading(false);
       } catch (error) {
         console.error("Error updating profile", error);
-        alert("Failed to update profile. Please try again.");
+        alert("Failed to update profile: " + error.message);
+      } finally {
         setLoading(false);
       }
     }
@@ -182,17 +228,43 @@ export default function Profile() {
     setSelectedTier(tier);
   };
 
-  const confirmPlanChange = () => {
-    if (selectedTier) {
-      const updatedUserInfo = { ...userInfo, subscription: selectedTier.name };
-      setUserInfo(updatedUserInfo);
-      localStorage.setItem("profileData", JSON.stringify(updatedUserInfo));
-      localStorage.setItem("selectedPlan", selectedTier.name);
-      login(updatedUserInfo);
+  const confirmPlanChange = async () => {
+    if (!selectedTier) return;
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      formData.append("username", userInfo.name);
+      formData.append("email", userInfo.email);
+      formData.append("subscription", selectedTier.name);
+
+      const res = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
+        method: "PUT",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update subscription");
+      }
+
+      // อัปเดตหน้าให้สดใหม่
+      const updatedInfo = { ...userInfo, subscription: selectedTier.name };
+      setUserInfo(updatedInfo);
+      login(updatedInfo);
       setSelectedTier(null);
       setShowPlanModal(false);
+    } catch (error) {
+      console.error("Subscription update error:", error);
+      alert("Failed to change subscription: " + error.message);
+    } finally {
+      setLoading(false);
     }
   };
+
+
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -219,8 +291,30 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSavePassword = () => {
-    if (validatePasswordForm()) {
+  const handleSavePassword = async () => {
+    if (!validatePasswordForm()) return;
+
+    try {
+      setLoading(true);
+
+      const response = await fetch("http://localhost:8080/users/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // ✅ ส่ง JWT cookie ไปด้วย
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to change password");
+      }
+
+      // ✅ สำเร็จ
       alert("Password changed successfully!");
       setPasswordData({
         currentPassword: "",
@@ -229,8 +323,14 @@ export default function Profile() {
       });
       setPasswordErrors({});
       setShowPasswordModal(false);
+    } catch (err) {
+      console.error("❌ Password change error:", err);
+      alert(`Failed to change password: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -291,13 +391,16 @@ export default function Profile() {
                         <circle cx="12" cy="7" r="4"></circle>
                       </svg>
                       <input
-                        id="profile-picture"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleProfilePictureChange}
-                        key={fileInputKey}
-                      />
+  id="profile-picture"
+  type="file"
+  accept="image/*"
+  className="hidden"
+  onChange={(e) => {
+    handleProfilePictureChange(e); // เปลี่ยน preview
+    handleUploadProfilePicture();  // อัปโหลดทันที
+  }}
+  key={fileInputKey}
+/>
                     </label>
                   </div>
                 )}

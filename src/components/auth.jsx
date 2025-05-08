@@ -34,7 +34,7 @@ export default function Auth({ onAuthenticated }) {
     confirmPassword: "",
     subscription: "Free", // Default subscription
     age: 18, // Default age
-    profilePicture: "", // ✅ เพิ่มบรรทัดนี้
+    profilePictureFile: null,
   });
 
   const handleLoginChange = (e) => {
@@ -44,30 +44,74 @@ export default function Auth({ onAuthenticated }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(""); // ล้างข้อความ error ก่อนทุกครั้ง
+    setError("");
 
+    // Helper to wait for cookie to be available
+    const waitForJwtCookie = async (maxWait = 2000, interval = 100) => {
+      const start = Date.now();
+      return new Promise((resolve, reject) => {
+        const check = () => {
+          const token = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("jwt="))
+            ?.split("=")[1];
+
+          if (token) return resolve(token);
+
+          if (Date.now() - start >= maxWait) {
+            return reject(new Error("JWT cookie not set in time"));
+          }
+
+          setTimeout(check, interval);
+        };
+        check();
+      });
+    };
+
+    let loginResponse;
     try {
-      const loginResponse = await apiService.auth.login(loginInfo);
+      loginResponse = await apiService.auth.login(loginInfo);
       if (!loginResponse || !loginResponse.data) {
-        throw new Error("Login API response invalid");
+        throw new Error("Login API response is invalid");
       }
+    } catch (err) {
+      console.error("Login API error:", err);
+      setError(err.message || "Login failed. Please try again.");
+      setLoading(false);
+      return;
+    }
 
-      // ✔ ดึง token
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("jwt="))
-        ?.split("=")[1] || `simulated-token-${Date.now()}`;
+    let token;
+    try {
+      console.log(document.cookie)
+      token = await waitForJwtCookie(); // ⏳ Wait until jwt cookie is available
+    } catch (err) {
+      console.error("Error waiting for JWT cookie:", err);
+      setError("Login succeeded, but authentication token is missing.");
+      setLoading(false);
+      return;
+    }
 
-      // ✔ เรียก /users/:user_id เพื่อดึง user + รูป
-      const userId = loginResponse.data.user.userID;
+    let user;
+    try {
+      const userId = loginResponse.data.user?.userID;
+      if (!userId) throw new Error("User ID not found in login response");
+
       const userResponse = await apiService.auth.getCurrentUser(userId);
-      const user = userResponse.data?.user;
-
+      user = userResponse.data?.user;
       if (!user || !user.userID) {
         throw new Error("Failed to fetch user data");
       }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError(err.message || "Failed to fetch user information.");
+      setLoading(false);
+      return;
+    }
 
-      const userData = {
+    let userData;
+    try {
+      userData = {
         id: user.userID || user.user_id || user.id,
         name: user.username,
         email: user.email,
@@ -75,118 +119,128 @@ export default function Auth({ onAuthenticated }) {
         profilePicture: user.profilePicture || "",
       };
 
-      // ✅ บันทึก token และ user ลง localStorage
       localStorage.setItem("authToken", token);
       localStorage.setItem("profileData", JSON.stringify(userData));
+    } catch (err) {
+      console.error("Error saving user data locally:", err);
+      setError("Failed to save user data locally.");
+      setLoading(false);
+      return;
+    }
 
-      // ✅ ส่ง callback กลับไปยัง Profile
+    try {
       if (onAuthenticated) onAuthenticated(userData);
+    } catch (err) {
+      console.error("Error in onAuthenticated callback:", err);
+    }
 
-      // ✅ Redirect
+    try {
       const savedRedirect = localStorage.getItem("redirectAfterLogin");
       localStorage.removeItem("redirectAfterLogin");
       window.location.href = savedRedirect ? `/${savedRedirect}` : "/movies";
     } catch (err) {
-      console.error("🔥 Login Error:", err);
-      setError(err.message || "Login failed. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Error during redirect:", err);
+      setError("Login succeeded, but redirect failed.");
     }
-};
-  
 
-  const handleRegisterChange = (e) => {
-    setRegisterInfo({ ...registerInfo, [e.target.name]: e.target.value });
+    setLoading(false);
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setError("");
 
-    if (registerInfo.password !== registerInfo.confirmPassword) {
-      setError("Passwords don't match");
-      return;
-    }
 
-    setLoading(true);
-    try {
-      // Prepare data for registration - omit confirmPassword
-      const registerData = {
-        username: registerInfo.username,
-        email: registerInfo.email,
-        password: registerInfo.password,
-        subscription: registerInfo.subscription,
-        age: registerInfo.age,
-        profilePicture: registerInfo.profilePicture, // เพิ่มการส่ง profile picture
-      };
 
-      // Make the API call using the service
-      const response = await apiService.auth.register(registerData);
+    const handleRegisterChange = (e) => {
+      setRegisterInfo({ ...registerInfo, [e.target.name]: e.target.value });
+    };
 
-      console.log("Registration success:", response.data);
+    const handleRegister = async (e) => {
+      e.preventDefault();
+      setError("");
 
-      // Login after successful registration
+      if (registerInfo.password !== registerInfo.confirmPassword) {
+        setError("Passwords don't match");
+        return;
+      }
+
+      setLoading(true);
       try {
-        await apiService.auth.login({
+        const formData = new FormData();
+        formData.append("username", registerInfo.username);
+        formData.append("email", registerInfo.email);
+        formData.append("password", registerInfo.password);
+        formData.append("subscription", registerInfo.subscription);
+        formData.append("age", registerInfo.age);
+        if (registerInfo.profilePictureFile) {
+          formData.append("profile_pic", registerInfo.profilePictureFile); // ✅ ชื่อ key ต้องตรงกับ backend
+        }
+
+        // Make the API call using the service
+        const response = await apiService.auth.register(formData);
+
+        console.log("Registration success:", response.data);
+
+        // Login after successful registration
+        try {
+          await apiService.auth.login({
+            email: registerInfo.email,
+            password: registerInfo.password,
+          });
+        } catch (loginError) {
+          console.error("Auto-login after registration failed:", loginError);
+          // Continue with registration flow even if login fails
+        }
+
+        // Get token from cookie or create a simulated one
+        const token =
+          document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("jwt="))
+            ?.split("=")[1] || "simulated-token-" + Date.now();
+
+        // Create a user object with numeric ID
+        const userData = {
+          id: 1, // เปลี่ยนเป็น ID ที่ถูกต้องจาก backend
+          name: registerInfo.username,
           email: registerInfo.email,
-          password: registerInfo.password,
-        });
-      } catch (loginError) {
-        console.error("Auto-login after registration failed:", loginError);
-        // Continue with registration flow even if login fails
+          subscription: registerInfo.subscription,
+          profilePicture: registerInfo.profilePicture || "", // เพิ่มตรงนี้
+        };
+
+        // Store token in localStorage
+        localStorage.setItem("authToken", token);
+
+        // Store user data in localStorage
+        localStorage.setItem("profileData", JSON.stringify(userData));
+
+        // Call the onAuthenticated callback with the user data
+        if (onAuthenticated) {
+          onAuthenticated(userData);
+        }
+
+        // Check for redirect in localStorage
+        const savedRedirect = localStorage.getItem("redirectAfterLogin");
+
+        // Clear the redirect info
+        localStorage.removeItem("redirectAfterLogin");
+
+        // Navigate based on saved redirect or default to movies
+        if (savedRedirect) {
+          window.location.href = `/${savedRedirect}`;
+        } else {
+          // Default redirect to movies page
+          window.location.href = "/movies";
+        }
+      } catch (error) {
+        console.error("Registration error:", error);
+
+        // Extract error message from response if available
+        const errorMessage =
+          error.response?.data?.error || "Registration failed. Please try again.";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
       }
-
-      // Get token from cookie or create a simulated one
-      const token =
-        document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("jwt="))
-          ?.split("=")[1] || "simulated-token-" + Date.now();
-
-      // Create a user object with numeric ID
-      const userData = {
-        id: 1, // เปลี่ยนเป็น ID ที่ถูกต้องจาก backend
-        name: registerInfo.username,
-        email: registerInfo.email,
-        subscription: registerInfo.subscription,
-        profilePicture: registerInfo.profilePicture || "", // เพิ่มตรงนี้
-      };
-
-      // Store token in localStorage
-      localStorage.setItem("authToken", token);
-
-      // Store user data in localStorage
-      localStorage.setItem("profileData", JSON.stringify(userData));
-
-      // Call the onAuthenticated callback with the user data
-      if (onAuthenticated) {
-        onAuthenticated(userData);
-      }
-
-      // Check for redirect in localStorage
-      const savedRedirect = localStorage.getItem("redirectAfterLogin");
-
-      // Clear the redirect info
-      localStorage.removeItem("redirectAfterLogin");
-
-      // Navigate based on saved redirect or default to movies
-      if (savedRedirect) {
-        window.location.href = `/${savedRedirect}`;
-      } else {
-        // Default redirect to movies page
-        window.location.href = "/movies";
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-
-      // Extract error message from response if available
-      const errorMessage =
-        error.response?.data?.error || "Registration failed. Please try again.";
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-};
+  };
 
 
   return (
@@ -310,29 +364,25 @@ export default function Auth({ onAuthenticated }) {
                   className="w-full bg-gray-800 border border-gray-700 text-white py-3 px-4 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              
+
               <div>
   <label className="block text-gray-300 text-sm font-medium mb-2">
     Profile Picture
   </label>
   <input
-    type="file"
-    accept="image/*"
-    onChange={(e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setRegisterInfo((prev) => ({
-            ...prev,
-            profilePicture: reader.result,
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
-    }}
-    className="text-white"
-  />
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setRegisterInfo((prev) => ({
+        ...prev,
+        profilePictureFile: file, // ✅ เก็บเป็นไฟล์
+      }));
+    }
+  }}
+  className="text-white"
+/>
 </div>
 
               <Button
