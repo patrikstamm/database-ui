@@ -178,20 +178,38 @@ export default function Profile() {
     if (validateForm()) {
       try {
         setLoading(true);
-        if (userInfo.id && typeof userInfo.id === 'string' && !isNaN(parseInt(userInfo.id))) {
-          userInfo.id = parseInt(userInfo.id, 10);
+  
+        const formData = new FormData();
+        formData.append("username", userInfo.name);
+        formData.append("email", userInfo.email);
+        formData.append("subscription", userInfo.subscription);
+  
+        const response = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
+          method: "PUT",
+          body: formData,
+          credentials: "include", // สำคัญมาก: ส่ง cookie (JWT) ไปด้วย
+        });
+  
+        if (!response.ok) {
+          const err = await response.json(); // ✅ ตรงนี้ใช้ได้เพราะประกาศแล้ว
+          throw new Error(err.error || "Update failed");
         }
-        localStorage.setItem("profileData", JSON.stringify(userInfo));
-        login(userInfo);
+  
+        // ถ้าอัปเดตสำเร็จ
+        const data = await response.json();
+        console.log("✅ Profile updated:", data);
+  
         setEditMode(false);
-        setLoading(false);
       } catch (error) {
         console.error("Error updating profile", error);
-        alert("Failed to update profile. Please try again.");
+        alert("Failed to update profile: " + error.message);
+      } finally {
         setLoading(false);
       }
     }
   };
+  
+  
 
   const handleLogout = () => {
     logout();
@@ -212,17 +230,43 @@ export default function Profile() {
     setSelectedTier(tier);
   };
 
-  const confirmPlanChange = () => {
-    if (selectedTier) {
-      const updatedUserInfo = { ...userInfo, subscription: selectedTier.name };
-      setUserInfo(updatedUserInfo);
-      localStorage.setItem("profileData", JSON.stringify(updatedUserInfo));
-      localStorage.setItem("selectedPlan", selectedTier.name);
-      login(updatedUserInfo);
+  const confirmPlanChange = async () => {
+    if (!selectedTier) return;
+  
+    try {
+      setLoading(true);
+  
+      const formData = new FormData();
+      formData.append("username", userInfo.name);
+      formData.append("email", userInfo.email);
+      formData.append("subscription", selectedTier.name);
+  
+      const res = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
+        method: "PUT",
+        body: formData,
+        credentials: "include",
+      });
+  
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update subscription");
+      }
+  
+      // อัปเดตหน้าให้สดใหม่
+      const updatedInfo = { ...userInfo, subscription: selectedTier.name };
+      setUserInfo(updatedInfo);
+      login(updatedInfo);
       setSelectedTier(null);
       setShowPlanModal(false);
+    } catch (error) {
+      console.error("Subscription update error:", error);
+      alert("Failed to change subscription: " + error.message);
+    } finally {
+      setLoading(false);
     }
   };
+  
+  
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
