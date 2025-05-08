@@ -34,7 +34,7 @@ export default function Auth({ onAuthenticated }) {
     confirmPassword: "",
     subscription: "Free", // Default subscription
     age: 18, // Default age
-    profilePicture: "", // ✅ เพิ่มบรรทัดนี้
+    profilePictureFile: null,
   });
 
   const handleLoginChange = (e) => {
@@ -110,18 +110,18 @@ export default function Auth({ onAuthenticated }) {
 
     setLoading(true);
     try {
-      // Prepare data for registration - omit confirmPassword
-      const registerData = {
-        username: registerInfo.username,
-        email: registerInfo.email,
-        password: registerInfo.password,
-        subscription: registerInfo.subscription,
-        age: registerInfo.age,
-        profilePicture: registerInfo.profilePicture, // เพิ่มการส่ง profile picture
-      };
+      const formData = new FormData();
+      formData.append("username", registerInfo.username);
+      formData.append("email", registerInfo.email);
+      formData.append("password", registerInfo.password);
+      formData.append("subscription", registerInfo.subscription);
+      formData.append("age", registerInfo.age);
+      if (registerInfo.profilePictureFile) {
+        formData.append("profile_pic", registerInfo.profilePictureFile); // ✅ ชื่อ key ต้องตรงกับ backend
+      }
 
       // Make the API call using the service
-      const response = await apiService.auth.register(registerData);
+      const response = await apiService.auth.register(formData);
 
       console.log("Registration success:", response.data);
 
@@ -316,23 +316,19 @@ export default function Auth({ onAuthenticated }) {
     Profile Picture
   </label>
   <input
-    type="file"
-    accept="image/*"
-    onChange={(e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setRegisterInfo((prev) => ({
-            ...prev,
-            profilePicture: reader.result,
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
-    }}
-    className="text-white"
-  />
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setRegisterInfo((prev) => ({
+        ...prev,
+        profilePictureFile: file, // ✅ เก็บเป็นไฟล์
+      }));
+    }
+  }}
+  className="text-white"
+/>
 </div>
 
               <Button

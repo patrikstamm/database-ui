@@ -117,7 +117,37 @@ export default function Profile() {
       setErrors({ ...errors, [name]: "" });
     }
   };
-
+  const handleUploadProfilePicture = async () => {
+    try {
+      const fileInput = document.getElementById("profile-picture");
+      if (fileInput && fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append("profile_pic", fileInput.files[0]); // 📎 ชื่อต้องตรงกับฝั่ง Go
+  
+        const response = await fetch("http://localhost:8080/users/profile_picture", {
+          method: "PUT",
+          body: formData,
+          credentials: "include", // 🔐 ส่ง cookie JWT ไปด้วย
+        });
+  
+        if (!response.ok) throw new Error("Upload failed");
+  
+        const result = await response.json();
+        console.log("✅ Upload success:", result);
+  
+        // 📥 ดึงรูปใหม่จาก backend เพื่ออัปเดตหน้า
+        const res = await apiService.auth.getCurrentUser(userInfo.id);
+        setUserInfo((prev) => ({
+          ...prev,
+          profilePicture: res.data.user.profilePicture || defaultAvatar,
+        }));
+      }
+    } catch (err) {
+      console.error("❌ Upload error:", err);
+      alert("Failed to upload profile picture");
+    }
+  };
+  
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -222,16 +252,17 @@ export default function Profile() {
   const handleSavePassword = () => {
     if (validatePasswordForm()) {
       alert("Password changed successfully!");
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      setPasswordErrors({});
-      setShowPasswordModal(false);
-    }
-  };
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setPasswordErrors({});
+        setShowPasswordModal(false);
 
+      }
+    };
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -291,13 +322,16 @@ export default function Profile() {
                         <circle cx="12" cy="7" r="4"></circle>
                       </svg>
                       <input
-                        id="profile-picture"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleProfilePictureChange}
-                        key={fileInputKey}
-                      />
+  id="profile-picture"
+  type="file"
+  accept="image/*"
+  className="hidden"
+  onChange={(e) => {
+    handleProfilePictureChange(e); // เปลี่ยน preview
+    handleUploadProfilePicture();  // อัปโหลดทันที
+  }}
+  key={fileInputKey}
+/>
                     </label>
                   </div>
                 )}

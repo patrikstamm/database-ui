@@ -87,7 +87,13 @@ const ensureNumericId = (id) => {
 const apiService = {
   // Auth services
   auth: {
-    register: (userData) => api.post("/register", userData),
+    register: (formData) =>
+      axios.post(`${API_URL}/register`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      }),
     login: (credentials) => api.post("/login", credentials),
     getCurrentUser: (userId) => {
       const numericId = ensureNumericId(userId);
