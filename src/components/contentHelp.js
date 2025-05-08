@@ -24,7 +24,7 @@ export const normalizeContent = (rawContent) => {
     videoUrl: rawContent.VideoURL || "", // MovieUrl/VideoURL with fallback
     genres: rawContent.Categories || [], // Categories array with fallback
     year: rawContent.ReleaseYear || "Unknown",
-    director: "Unknown", // Backend doesn't have director info yet
+    director: rawContent.Director, // Backend doesn't have director info yet
     duration: formatDuration(rawContent.Duration),
     rating: rawContent.Rating || 0,
     languages: rawContent.Languages || [],
