@@ -8,7 +8,7 @@ import { useAuth } from "../components/context/authContext";
 import {
   normalizeContent,
   getYouTubeEmbedUrl,
-} from "../components/contentHelp"; 
+} from "../components/contentHelp";
 
 export default function MovieDetail() {
   const { id } = useParams();

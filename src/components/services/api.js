@@ -34,13 +34,14 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle auth errors
+ //Add response interceptor to handle auth errors
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     // Handle 401 (Unauthorized) errors
+    console.log(error.response)
     if (error.response && error.response.status === 401) {
       console.log("Authentication error detected, redirecting to login");
 
@@ -141,9 +142,8 @@ const apiService = {
       return api.get(`/favorites/${numericId}`);
     },
     removeFavorite: (userId, contentId) => {
-      const numericId = ensureNumericId(userId);
+      const numericId = ensureNumericId(contentId);
       return api.delete(`/favorites/${numericId}`, {
-        data: { content_id: ensureNumericId(contentId) },
       });
     },
     checkFavorite: (userId, contentId) => {

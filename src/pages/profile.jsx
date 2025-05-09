@@ -123,18 +123,18 @@ export default function Profile() {
       if (fileInput && fileInput.files.length > 0) {
         const formData = new FormData();
         formData.append("profile_pic", fileInput.files[0]); // 📎 ชื่อต้องตรงกับฝั่ง Go
-  
+
         const response = await fetch("http://localhost:8080/users/profile_picture", {
           method: "PUT",
           body: formData,
           credentials: "include", // 🔐 ส่ง cookie JWT ไปด้วย
         });
-  
+
         if (!response.ok) throw new Error("Upload failed");
-  
+
         const result = await response.json();
         console.log("✅ Upload success:", result);
-  
+
         // 📥 ดึงรูปใหม่จาก backend เพื่ออัปเดตหน้า
         const res = await apiService.auth.getCurrentUser(userInfo.id);
         setUserInfo((prev) => ({
@@ -147,7 +147,7 @@ export default function Profile() {
       alert("Failed to upload profile picture");
     }
   };
-  
+
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -178,27 +178,27 @@ export default function Profile() {
     if (validateForm()) {
       try {
         setLoading(true);
-  
+
         const formData = new FormData();
         formData.append("username", userInfo.name);
         formData.append("email", userInfo.email);
         formData.append("subscription", userInfo.subscription);
-  
+
         const response = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
           method: "PUT",
           body: formData,
           credentials: "include", // สำคัญมาก: ส่ง cookie (JWT) ไปด้วย
         });
-  
+
         if (!response.ok) {
           const err = await response.json(); // ✅ ตรงนี้ใช้ได้เพราะประกาศแล้ว
           throw new Error(err.error || "Update failed");
         }
-  
+
         // ถ้าอัปเดตสำเร็จ
         const data = await response.json();
         console.log("✅ Profile updated:", data);
-  
+
         setEditMode(false);
       } catch (error) {
         console.error("Error updating profile", error);
@@ -208,7 +208,7 @@ export default function Profile() {
       }
     }
   };
-  
+
   const handleLogout = () => {
     logout();
     setUserInfo({
@@ -230,26 +230,26 @@ export default function Profile() {
 
   const confirmPlanChange = async () => {
     if (!selectedTier) return;
-  
+
     try {
       setLoading(true);
-  
+
       const formData = new FormData();
       formData.append("username", userInfo.name);
       formData.append("email", userInfo.email);
       formData.append("subscription", selectedTier.name);
-  
+
       const res = await fetch(`http://localhost:8080/users/${userInfo.id}`, {
         method: "PUT",
         body: formData,
         credentials: "include",
       });
-  
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to update subscription");
       }
-  
+
       // อัปเดตหน้าให้สดใหม่
       const updatedInfo = { ...userInfo, subscription: selectedTier.name };
       setUserInfo(updatedInfo);
@@ -263,8 +263,8 @@ export default function Profile() {
       setLoading(false);
     }
   };
-  
-  
+
+
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -293,10 +293,10 @@ export default function Profile() {
 
   const handleSavePassword = async () => {
     if (!validatePasswordForm()) return;
-  
+
     try {
       setLoading(true);
-  
+
       const response = await fetch("http://localhost:8080/users/change-password", {
         method: "POST",
         headers: {
@@ -308,12 +308,12 @@ export default function Profile() {
           newPassword: passwordData.newPassword,
         }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to change password");
       }
-  
+
       // ✅ สำเร็จ
       alert("Password changed successfully!");
       setPasswordData({
@@ -330,8 +330,8 @@ export default function Profile() {
       setLoading(false);
     }
   };
-  
-  
+
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
