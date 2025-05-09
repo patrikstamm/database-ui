@@ -48,9 +48,8 @@ export default function ReviewSection({ contentId }) {
       try {
         // Attempt to fetch reviews from backend
         try {
-          const response = await apiService.reviews.getContentReviews(
-            contentId
-          );
+          const response = await apiService.reviews.getContentReviews(contentId);
+          console.log("📦 review data from backend:", response.data);
 
           if (response.data && Array.isArray(response.data)) {
             // Normalize review data
@@ -58,7 +57,7 @@ export default function ReviewSection({ contentId }) {
               id: review.review_id || review.ReviewID || Date.now().toString(),
               text: review.review_text || review.ReviewText || "",
               userId: review.user_id || review.UserID || "unknown",
-              userName: review.user_name || review.UserName || "User",
+              userName: review.username || "User",
               userProfilePicture:
                 review.user_profile_picture &&
                 !review.user_profile_picture.includes("/api/placeholder")
@@ -109,7 +108,17 @@ export default function ReviewSection({ contentId }) {
   // Save reviews to localStorage whenever they change
   useEffect(() => {
     if (reviews.length > 0) {
-      localStorage.setItem(`reviews_${contentId}`, JSON.stringify(reviews));
+      // เก็บเฉพาะข้อมูลจำเป็น ไม่เก็บรูป
+      const trimmedReviews = reviews.map(({ id, text, userId, userName, timestamp, rating }) => ({
+        id,
+        text,
+        userId,
+        userName,
+        timestamp,
+        rating,
+      }));
+  
+      localStorage.setItem(`reviews_${contentId}`, JSON.stringify(trimmedReviews));
     }
   }, [reviews, contentId]);
 
@@ -134,7 +143,7 @@ export default function ReviewSection({ contentId }) {
         text: comment,
         userId: currentUser.id,
         userName: currentUser.name,
-        userProfilePicture: currentUser.profilePicture,
+        userProfilePicture: review.user_profile_picture || DEFAULT_AVATAR,
         timestamp: new Date(),
         rating: 5,
         likes: 0,
@@ -233,13 +242,16 @@ export default function ReviewSection({ contentId }) {
 
   const deleteReview = async (reviewId) => {
     if (!isAuthenticated) return;
-
-    // Delete review locally
-    setReviews(reviews.filter((review) => review.id !== reviewId));
-
-    // In a real implementation, you would also delete the review on the backend
-    // This would require an endpoint that doesn't exist yet
+  
+    try {
+      await apiService.reviews.deleteReview(reviewId); // ✅ เรียก backend ลบจริง
+      setReviews(reviews.filter((review) => review.id !== reviewId)); // ✅ ลบจาก state
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert("Failed to delete comment. Please try again.");
+    }
   };
+  
 
   // Format date to be more user-friendly
   const formatDate = (date) => {
