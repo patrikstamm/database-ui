@@ -209,8 +209,6 @@ export default function Profile() {
     }
   };
   
-  
-
   const handleLogout = () => {
     logout();
     setUserInfo({
@@ -293,19 +291,46 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSavePassword = () => {
-    if (validatePasswordForm()) {
-      alert("Password changed successfully!");
-        setPasswordData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-        setPasswordErrors({});
-        setShowPasswordModal(false);
-
+  const handleSavePassword = async () => {
+    if (!validatePasswordForm()) return;
+  
+    try {
+      setLoading(true);
+  
+      const response = await fetch("http://localhost:8080/users/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // ✅ ส่ง JWT cookie ไปด้วย
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to change password");
       }
-    };
+  
+      // ✅ สำเร็จ
+      alert("Password changed successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setPasswordErrors({});
+      setShowPasswordModal(false);
+    } catch (err) {
+      console.error("❌ Password change error:", err);
+      alert(`Failed to change password: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   
   if (loading) {
     return (
