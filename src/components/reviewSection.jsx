@@ -144,7 +144,7 @@ export default function ReviewSection({ contentId }) {
         text: comment,
         userId: currentUser.id,
         userName: currentUser.name,
-        userProfilePicture: review.user_profile_picture || DEFAULT_AVATAR,
+        userProfilePicture: currentUser.profile_pic || DEFAULT_AVATAR,
         timestamp: new Date(),
         rating: 5,
         likes: 0,
@@ -396,6 +396,22 @@ export default function ReviewSection({ contentId }) {
                       {formatDate(review.timestamp)}
                     </p>
                   </div>
+                  {/* Review star rating */}
+                  {review.rating != null && (
+                    <div className="flex items-center mt-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg
+                          key={star}
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-5 w-5 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-600'}`}
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.868 1.507 8.273L12 18.896l-7.443 4.551 1.507-8.273L0 9.306l8.332-1.151z" />
+                        </svg>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Review content - either display or edit mode */}
                   {editingId === review.id ? (
