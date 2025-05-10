@@ -17,6 +17,7 @@ export default function ReviewSection({ contentId }) {
 
   // State for reviews
   const [comment, setComment] = useState("");
+  const [rating, setRating] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,9 +49,8 @@ export default function ReviewSection({ contentId }) {
       try {
         // Attempt to fetch reviews from backend
         try {
-          const response = await apiService.reviews.getContentReviews(
-            contentId
-          );
+          const response = await apiService.reviews.getContentReviews(contentId);
+          console.log("📦 review data from backend:", response.data);
 
           if (response.data && Array.isArray(response.data)) {
             // Normalize review data
@@ -58,10 +58,10 @@ export default function ReviewSection({ contentId }) {
               id: review.review_id || review.ReviewID || Date.now().toString(),
               text: review.review_text || review.ReviewText || "",
               userId: review.user_id || review.UserID || "unknown",
-              userName: review.user_name || review.UserName || "User",
+              userName: review.username || "User",
               userProfilePicture:
                 review.user_profile_picture &&
-                !review.user_profile_picture.includes("/api/placeholder")
+                  !review.user_profile_picture.includes("/api/placeholder")
                   ? review.user_profile_picture
                   : DEFAULT_AVATAR,
               timestamp: review.review_date || review.ReviewDate || new Date(),
@@ -109,7 +109,17 @@ export default function ReviewSection({ contentId }) {
   // Save reviews to localStorage whenever they change
   useEffect(() => {
     if (reviews.length > 0) {
-      localStorage.setItem(`reviews_${contentId}`, JSON.stringify(reviews));
+      // เก็บเฉพาะข้อมูลจำเป็น ไม่เก็บรูป
+      const trimmedReviews = reviews.map(({ id, text, userId, userName, timestamp, rating }) => ({
+        id,
+        text,
+        userId,
+        userName,
+        timestamp,
+        rating,
+      }));
+
+      localStorage.setItem(`reviews_${contentId}`, JSON.stringify(trimmedReviews));
     }
   }, [reviews, contentId]);
 
@@ -121,7 +131,7 @@ export default function ReviewSection({ contentId }) {
       const reviewData = {
         user_id: parseInt(currentUser.id, 10) || 1,
         content_id: parseInt(contentId, 10),
-        rating: 5, // Default rating
+        rating: rating, // Default rating
         review_text: comment,
       };
 
@@ -134,7 +144,7 @@ export default function ReviewSection({ contentId }) {
         text: comment,
         userId: currentUser.id,
         userName: currentUser.name,
-        userProfilePicture: currentUser.profilePicture,
+        userProfilePicture: review.user_profile_picture || DEFAULT_AVATAR,
         timestamp: new Date(),
         rating: 5,
         likes: 0,
@@ -234,12 +244,15 @@ export default function ReviewSection({ contentId }) {
   const deleteReview = async (reviewId) => {
     if (!isAuthenticated) return;
 
-    // Delete review locally
-    setReviews(reviews.filter((review) => review.id !== reviewId));
-
-    // In a real implementation, you would also delete the review on the backend
-    // This would require an endpoint that doesn't exist yet
+    try {
+      await apiService.reviews.deleteReview(reviewId); // ✅ เรียก backend ลบจริง
+      setReviews(reviews.filter((review) => review.id !== reviewId)); // ✅ ลบจาก state
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert("Failed to delete comment. Please try again.");
+    }
   };
+
 
   // Format date to be more user-friendly
   const formatDate = (date) => {
@@ -311,6 +324,24 @@ export default function ReviewSection({ contentId }) {
             <p className="text-white font-medium">{currentUser.name}</p>
           </div>
         </div>
+
+        {/* Rating Stars */}
+        <div className="flex items-center mb-2 space-x-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <svg
+              key={star}
+              onClick={() => setRating(star)}
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-6 w-6 cursor-pointer ${rating >= star ? 'text-yellow-400' : 'text-gray-500'
+                }`}
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.868 1.507 8.273L12 18.896l-7.443 4.551 1.507-8.273L0 9.306l8.332-1.151z" />
+            </svg>
+          ))}
+        </div>
+
         <textarea
           className="w-full bg-gray-900 text-white p-3 rounded-lg resize-none h-24 outline-none"
           placeholder="Write your review..."
@@ -318,7 +349,7 @@ export default function ReviewSection({ contentId }) {
           onChange={(e) => setComment(e.target.value)}
         />
 
-        {comment.trim() && (
+        {(comment.trim() || rating > 0) && (
           <div className="flex justify-end space-x-2 mt-2">
             <button
               onClick={handleCancel}
@@ -335,6 +366,7 @@ export default function ReviewSection({ contentId }) {
           </div>
         )}
       </div>
+
 
       {/* Reviews list */}
       {reviews.length === 0 ? (
@@ -399,11 +431,10 @@ export default function ReviewSection({ contentId }) {
                 {/* Like button */}
                 <button
                   onClick={() => handleLike(review.id)}
-                  className={`flex items-center space-x-1 ${
-                    review.likedBy.includes(currentUser.id)
-                      ? "text-indigo-400"
-                      : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`flex items-center space-x-1 ${review.likedBy.includes(currentUser.id)
+                    ? "text-indigo-400"
+                    : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

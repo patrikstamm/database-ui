@@ -184,7 +184,7 @@ const apiService = {
       return api.post("/watch_history", {
         user_id: ensureNumericId(userId),
         content_id: ensureNumericId(contentId),
-        progress: data.progress || new Date().toISOString(),
+        progress: data.progress || new Date().toISOString().replace('Z', '+07:00'),
         language_preference: data.language || "English",
         cc_preference: data.cc || "Off",
       });

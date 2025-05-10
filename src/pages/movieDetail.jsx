@@ -39,9 +39,11 @@ export default function MovieDetail() {
           (m) => String(m.ContentID) === String(id)
         );
 
+        console.log(foundMovie)
         if (foundMovie) {
           // Normalize movie data
           const movieData = normalizeContent(foundMovie);
+          console.log(movieData)
           setMovie(movieData);
 
           // Record this in watch history
@@ -313,15 +315,23 @@ export default function MovieDetail() {
                 </div>
               )}
 
-              {movie.rating > 0 && (
+              {movie.rating != null ? (
                 <div className="mb-4">
                   <h3 className="text-md font-medium text-gray-400">Rating</h3>
                   <div className="flex items-center mt-1">
                     <span className="text-yellow-500 text-xl mr-2">★</span>
-                    <span>{movie.rating.toFixed(1)}/10</span>
+                    <span>{movie.rating.toFixed(1)}/5</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <h3 className="text-md font-medium text-gray-400">Rating</h3>
+                  <div className="flex items-center mt-1">
+                    <span className="text-gray-500">No review yet</span>
                   </div>
                 </div>
               )}
+
             </div>
           </div>
 
