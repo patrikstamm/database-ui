@@ -17,6 +17,7 @@ export default function ReviewSection({ contentId }) {
 
   // State for reviews
   const [comment, setComment] = useState("");
+  const [rating, setRating] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,7 +61,7 @@ export default function ReviewSection({ contentId }) {
               userName: review.username || "User",
               userProfilePicture:
                 review.user_profile_picture &&
-                !review.user_profile_picture.includes("/api/placeholder")
+                  !review.user_profile_picture.includes("/api/placeholder")
                   ? review.user_profile_picture
                   : DEFAULT_AVATAR,
               timestamp: review.review_date || review.ReviewDate || new Date(),
@@ -117,7 +118,7 @@ export default function ReviewSection({ contentId }) {
         timestamp,
         rating,
       }));
-  
+
       localStorage.setItem(`reviews_${contentId}`, JSON.stringify(trimmedReviews));
     }
   }, [reviews, contentId]);
@@ -130,7 +131,7 @@ export default function ReviewSection({ contentId }) {
       const reviewData = {
         user_id: parseInt(currentUser.id, 10) || 1,
         content_id: parseInt(contentId, 10),
-        rating: 5, // Default rating
+        rating: rating, // Default rating
         review_text: comment,
       };
 
@@ -242,7 +243,7 @@ export default function ReviewSection({ contentId }) {
 
   const deleteReview = async (reviewId) => {
     if (!isAuthenticated) return;
-  
+
     try {
       await apiService.reviews.deleteReview(reviewId); // ✅ เรียก backend ลบจริง
       setReviews(reviews.filter((review) => review.id !== reviewId)); // ✅ ลบจาก state
@@ -251,7 +252,7 @@ export default function ReviewSection({ contentId }) {
       alert("Failed to delete comment. Please try again.");
     }
   };
-  
+
 
   // Format date to be more user-friendly
   const formatDate = (date) => {
@@ -323,6 +324,24 @@ export default function ReviewSection({ contentId }) {
             <p className="text-white font-medium">{currentUser.name}</p>
           </div>
         </div>
+
+        {/* Rating Stars */}
+        <div className="flex items-center mb-2 space-x-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <svg
+              key={star}
+              onClick={() => setRating(star)}
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-6 w-6 cursor-pointer ${rating >= star ? 'text-yellow-400' : 'text-gray-500'
+                }`}
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.868 1.507 8.273L12 18.896l-7.443 4.551 1.507-8.273L0 9.306l8.332-1.151z" />
+            </svg>
+          ))}
+        </div>
+
         <textarea
           className="w-full bg-gray-900 text-white p-3 rounded-lg resize-none h-24 outline-none"
           placeholder="Write your review..."
@@ -330,7 +349,7 @@ export default function ReviewSection({ contentId }) {
           onChange={(e) => setComment(e.target.value)}
         />
 
-        {comment.trim() && (
+        {(comment.trim() || rating > 0) && (
           <div className="flex justify-end space-x-2 mt-2">
             <button
               onClick={handleCancel}
@@ -347,6 +366,7 @@ export default function ReviewSection({ contentId }) {
           </div>
         )}
       </div>
+
 
       {/* Reviews list */}
       {reviews.length === 0 ? (
@@ -411,11 +431,10 @@ export default function ReviewSection({ contentId }) {
                 {/* Like button */}
                 <button
                   onClick={() => handleLike(review.id)}
-                  className={`flex items-center space-x-1 ${
-                    review.likedBy.includes(currentUser.id)
-                      ? "text-indigo-400"
-                      : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`flex items-center space-x-1 ${review.likedBy.includes(currentUser.id)
+                    ? "text-indigo-400"
+                    : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

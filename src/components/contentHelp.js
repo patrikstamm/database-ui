@@ -18,7 +18,7 @@ export const normalizeContent = (rawContent) => {
     // Use CORS-friendly placeholder if ThumbnailURL is missing or uses /api/placeholder
     poster:
       rawContent.ThumbnailURL &&
-      !rawContent.ThumbnailURL.includes("/api/placeholder")
+        !rawContent.ThumbnailURL.includes("/api/placeholder")
         ? rawContent.ThumbnailURL
         : fallbackPoster,
     videoUrl: rawContent.VideoURL || "", // MovieUrl/VideoURL with fallback
@@ -26,7 +26,7 @@ export const normalizeContent = (rawContent) => {
     year: rawContent.ReleaseYear || "Unknown",
     director: rawContent.Director, // Backend doesn't have director info yet
     duration: formatDuration(rawContent.Duration),
-    rating: rawContent.Rating || 0,
+    rating: rawContent.Rating,
     languages: rawContent.Languages || [],
     subtitles: rawContent.Subtitles || [],
   };
